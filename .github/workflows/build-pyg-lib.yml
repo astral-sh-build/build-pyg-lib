@@ -127,6 +127,7 @@ jobs:
             LIBRARY_PATH=/usr/lib64
             LD_LIBRARY_PATH=/usr/lib64:/usr/local/cuda-${{ matrix.cuda-version }}/lib64:/usr/local/cuda-${{ matrix.cuda-version }}/targets/${{ matrix.target-arch }}-linux/lib:/usr/local/cuda-${{ matrix.cuda-version }}/extras/CUPTI/lib64
             LDFLAGS="-ldl -L/usr/local/cuda-${{ matrix.cuda-version }}/targets/${{ matrix.target-arch }}-linux/lib/stubs"
+            TORCH_CUDA_ARCH_LIST="${{ matrix.torch-cuda-arch-list }}"
             UV_NO_CONFIG=1
             MAX_JOBS=8
           CIBW_REPAIR_WHEEL_COMMAND_LINUX: >-
@@ -149,14 +150,15 @@ jobs:
               --license-expression "MIT AND BSD-3-Clause AND Apache-2.0 AND (Apache-2.0 WITH LLVM-exception)" \
               --license-file "LICENSE:LICENSE" \
               --license-file "LICENSE_radix_sort:LICENSE_radix_sort" \
-              --license-file "third_party/METIS/LICENSE:third_party/METIS/LICENSE" \
-              --license-file "third_party/cccl/LICENSE:third_party/cccl/LICENSE" \
-              --license-file "third_party/cccl/cub/LICENSE.TXT:third_party/cccl/cub/LICENSE.TXT" \
-              --license-file "third_party/cccl/libcudacxx/LICENSE.TXT:third_party/cccl/libcudacxx/LICENSE.TXT" \
-              --license-file "third_party/cccl/thrust/LICENSE:third_party/cccl/thrust/LICENSE" \
-              --license-file "third_party/cuCollections/LICENSE:third_party/cuCollections/LICENSE" \
-              --license-file "third_party/cutlass/LICENSE.txt:third_party/cutlass/LICENSE.txt" \
-              --license-file "third_party/parallel-hashmap/LICENSE:third_party/parallel-hashmap/LICENSE"
+              --license-file "third_party/METIS/LICENSE:third-party/METIS/LICENSE" \
+              --license-file "third_party/METIS/GKlib/LICENSE.txt:third-party/METIS/GKlib/LICENSE.txt" \
+              --license-file "third_party/cccl/LICENSE:third-party/cccl/LICENSE" \
+              --license-file "third_party/cccl/cub/LICENSE.TXT:third-party/cccl/cub/LICENSE.TXT" \
+              --license-file "third_party/cccl/libcudacxx/LICENSE.TXT:third-party/cccl/libcudacxx/LICENSE.TXT" \
+              --license-file "third_party/cccl/thrust/LICENSE:third-party/cccl/thrust/LICENSE" \
+              --license-file "third_party/cuCollections/LICENSE:third-party/cuCollections/LICENSE" \
+              --license-file "third_party/cutlass/LICENSE.txt:third-party/cutlass/LICENSE.txt" \
+              --license-file "third_party/parallel-hashmap/LICENSE:third-party/parallel-hashmap/LICENSE"
           done
 
       - name: Log built wheel

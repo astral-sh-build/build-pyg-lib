@@ -161,7 +161,9 @@ def augment_metadata(
     truncated_sha = source_commit[:7]
     commit_url = f"{source_repo.rstrip('/')}/commit/{source_commit}"
 
-    description += f"This distribution was built by Astral from [{repo_name}@{truncated_sha}]({commit_url})."
+    description += (
+        f"This distribution was built by Astral from [{repo_name}@{truncated_sha}]({commit_url})."
+    )
 
     if patches:
         description += "\n\n"
@@ -290,9 +292,7 @@ def embed_sbom(
     print(f"Embedded SBOM with {len(patch_files)} patch(es) into {wheel_path}")
 
 
-def parse_license_file_spec(
-    parser: argparse.ArgumentParser, spec: str
-) -> tuple[Path, str]:
+def parse_license_file_spec(parser: argparse.ArgumentParser, spec: str) -> tuple[Path, str]:
     """Parse a SOURCE:DEST license-file argument."""
     if ":" not in spec:
         parser.error(f"Invalid --license-file value, expected SOURCE:DEST: {spec}")
@@ -323,7 +323,9 @@ def main() -> None:
     parser.add_argument(
         "--source-repo", type=str, required=True, help="Source repository URL"
     )
-    parser.add_argument("--source-tag", type=str, required=True, help="Source git tag")
+    parser.add_argument(
+        "--source-tag", type=str, required=True, help="Source git tag"
+    )
     parser.add_argument(
         "--source-commit", type=str, required=True, help="Source git commit SHA"
     )
@@ -360,7 +362,9 @@ def main() -> None:
         for license_file in args.license_file
     ]
     license_expression = (
-        args.license_expression.strip() if args.license_expression is not None else None
+        args.license_expression.strip()
+        if args.license_expression is not None
+        else None
     )
     if args.license_expression is not None and not license_expression:
         parser.error("--license-expression must not be empty")

@@ -1,5 +1,5 @@
 # /// script
-# requires-python = ">=3.10"
+# requires-python = ">=3.13"
 # ///
 """Generate the pyg-lib CPU and CUDA build matrix."""
 
@@ -12,6 +12,21 @@ TORCH_BACKENDS = {
     "2.11.0": ["cpu", "cu126", "cu128", "cu130"],
     "2.12.0": ["cpu", "cu126", "cu130", "cu132"],
     "2.13.0": ["cpu", "cu126", "cu130", "cu132"],
+}
+
+TORCH_CUDA_ARCH_LIST = {
+    ("2.10", "12.6"): "7.0;7.5;8.0;8.6;9.0+PTX",
+    ("2.10", "12.8"): "7.0;7.5;8.0;8.6;9.0;10.0;12.0+PTX",
+    ("2.10", "13.0"): "7.5;8.0;8.6;9.0;10.0;11.0;12.0+PTX",
+    ("2.11", "12.6"): "7.0;7.5;8.0;8.6;9.0+PTX",
+    ("2.11", "12.8"): "7.0;7.5;8.0;8.6;9.0;10.0;12.0+PTX",
+    ("2.11", "13.0"): "7.5;8.0;8.6;9.0;10.0;11.0;12.0+PTX",
+    ("2.12", "12.6"): "7.0;7.5;8.0;8.6;9.0+PTX",
+    ("2.12", "13.0"): "7.5;8.0;8.6;9.0;10.0;12.0+PTX",
+    ("2.12", "13.2"): "7.5;8.0;8.6;9.0;10.0;12.0+PTX",
+    ("2.13", "12.6"): "7.0;7.5;8.0;8.6;9.0+PTX",
+    ("2.13", "13.0"): "7.5;8.0;8.6;9.0;10.0;12.0+PTX",
+    ("2.13", "13.2"): "7.5;8.0;8.6;9.0;10.0;12.0+PTX",
 }
 
 AUDITWHEEL_EXCLUDES = [
@@ -38,6 +53,7 @@ def main() -> None:
     rows = []
     for torch_version, backends in TORCH_BACKENDS.items():
         for backend in backends:
+            torch_minor = ".".join(torch_version.split(".")[:2])
             cuda_version = backend.removeprefix("cu")
             if backend != "cpu":
                 cuda_version = f"{cuda_version[:-1]}.{cuda_version[-1]}"
@@ -46,7 +62,7 @@ def main() -> None:
                 rows.append(
                     {
                         "torch-version": torch_version,
-                        "torch-minor": ".".join(torch_version.split(".")[:2]),
+                        "torch-minor": torch_minor,
                         "backend": backend,
                         "cuda-version": cuda_version,
                         "target-arch": target_arch,
@@ -58,6 +74,11 @@ def main() -> None:
                         ),
                         "auditwheel-excludes": " ".join(
                             f"--exclude {library}" for library in AUDITWHEEL_EXCLUDES
+                        ),
+                        "torch-cuda-arch-list": (
+                            ""
+                            if backend == "cpu"
+                            else TORCH_CUDA_ARCH_LIST[(torch_minor, cuda_version)]
                         ),
                     }
                 )
