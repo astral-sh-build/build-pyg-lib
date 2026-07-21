@@ -1,0 +1,198 @@
+name: pyg-lib
+
+permissions: {}
+
+on:
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      release_tag:
+        description: "Release tag"
+        required: true
+        type: string
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || inputs.release_tag || github.sha }}
+  cancel-in-progress: true
+
+jobs:
+  plan-matrix:
+    name: Plan pyg-lib build matrix
+    runs-on: ubuntu-latest
+    if: ${{ !contains(github.event.pull_request.labels.*.name, 'no-build') }}
+    permissions:
+      contents: read
+    outputs:
+      matrix: ${{ steps.generate-matrix.outputs.matrix }}
+    steps:
+      - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+        with:
+          persist-credentials: false
+
+      - name: Generate build matrix
+        id: generate-matrix
+        run: echo "matrix=$(python plan-matrix.py)" >> "$GITHUB_OUTPUT"
+        env:
+          LIMIT_MATRIX: ${{ github.event_name == 'pull_request' && !contains(github.event.pull_request.labels.*.name, 'full-build') && '1' || '0' }}
+
+  build-wheels:
+    name: Build Wheel
+    needs: [plan-matrix]
+    runs-on: ${{ matrix.runner }}
+    if: ${{ !contains(github.event.pull_request.labels.*.name, 'no-build') }}
+    permissions:
+      contents: read
+    strategy:
+      fail-fast: false
+      matrix:
+        include: ${{ fromJSON(needs.plan-matrix.outputs.matrix) }}
+
+    steps:
+      - name: Determine pyg-lib version
+        id: pyg-lib-version
+        env:
+          GITHUB_EVENT_NAME: ${{ github.event_name }}
+          INPUTS_RELEASE_TAG: ${{ inputs.release_tag }}
+        run: |
+          if [ "${GITHUB_EVENT_NAME}" = "workflow_dispatch" ]; then
+            PYG_LIB_VERSION=$(sed -E 's/-r[0-9]+$//' <<<"${INPUTS_RELEASE_TAG}")
+          else
+            PYG_LIB_VERSION="0.8.0"
+          fi
+          echo "version=${PYG_LIB_VERSION}" >> "$GITHUB_OUTPUT"
+          echo "Using pyg-lib version: ${PYG_LIB_VERSION}"
+
+      - name: Checkout pyg-lib
+        uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+        with:
+          repository: pyg-team/pyg-lib
+          ref: ${{ steps.pyg-lib-version.outputs.version }}
+          submodules: recursive
+          persist-credentials: false
+
+      - name: Get source commit SHA
+        id: source-commit
+        run: echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/setup-python@e797f83bcb11b83ae66e0230d6156d7c80228e7c # v6.0.0
+        with:
+          python-version: "3.13"
+
+      - name: Checkout build scripts
+        uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+        with:
+          path: build_scripts
+          persist-credentials: false
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@6b9c6063abd6010835644d4c2e1bef4cf5cd0fca # v6.0.1
+        with:
+          version: "0.9.26"
+          enable-cache: false
+
+      - name: Install cibuildwheel
+        run: |
+          uv venv --python 3.13
+          uv pip install cibuildwheel
+
+      - name: Build pyg-lib ${{ matrix.torch-version }}+${{ matrix.backend }} wheel
+        run: |
+          .venv/bin/cibuildwheel --output-dir dist
+          wheels=(dist/*.whl)
+          if [ "${#wheels[@]}" -ne 1 ] || [[ "${wheels[0]}" != *-cp310-abi3-* ]]; then
+            echo "Expected exactly one cp310-abi3 wheel, found: ${wheels[*]}"
+            exit 1
+          fi
+        env:
+          CIBW_ARCHS_LINUX: ${{ matrix.target-arch }}
+          CIBW_BUILD: "cp310-*"
+          CIBW_SKIP: "*-musllinux_*"
+          CIBW_MANYLINUX_X86_64_IMAGE: ${{ matrix.backend == 'cpu' && 'quay.io/pypa/manylinux_2_28_x86_64' || format('pytorch/manylinux2_28-builder:cuda{0}', matrix.cuda-version) }}
+          CIBW_MANYLINUX_AARCH64_IMAGE: ${{ matrix.backend == 'cpu' && 'quay.io/pypa/manylinux_2_28_aarch64' || format('pytorch/manylinuxaarch64-builder:cuda{0}', matrix.cuda-version) }}
+          CIBW_BEFORE_ALL: curl -LsSf https://astral.sh/uv/install.sh | sh
+          CIBW_BEFORE_BUILD_LINUX: >-
+            uv pip install setuptools wheel ninja cmake packaging &&
+            uv pip install --no-cache-dir --index-strategy unsafe-first-match torch==${{ matrix.torch-version }} --index-url https://download.pytorch.org/whl/${{ matrix.backend }} &&
+            bash build_scripts/prepare_for_build.sh ${{ steps.pyg-lib-version.outputs.version }}
+          CIBW_BEFORE_TEST_LINUX: >-
+            uv pip install --no-cache-dir --index-strategy unsafe-first-match torch==${{ matrix.torch-version }} --index-url https://download.pytorch.org/whl/${{ matrix.backend }}
+          CIBW_TEST_COMMAND: >-
+            python -c "import pyg_lib; print(pyg_lib.__version__); print(pyg_lib.cuda_version())"
+          CIBW_ENVIRONMENT: >-
+            PATH=$PATH:/root/.local/bin
+            FORCE_CUDA=${{ matrix.force-cuda }}
+            FORCE_NINJA=1
+            CUDA_HOME=/usr/local/cuda-${{ matrix.cuda-version }}
+            LIBRARY_PATH=/usr/lib64
+            LD_LIBRARY_PATH=/usr/lib64:/usr/local/cuda-${{ matrix.cuda-version }}/lib64:/usr/local/cuda-${{ matrix.cuda-version }}/targets/${{ matrix.target-arch }}-linux/lib:/usr/local/cuda-${{ matrix.cuda-version }}/extras/CUPTI/lib64
+            LDFLAGS="-ldl -L/usr/local/cuda-${{ matrix.cuda-version }}/targets/${{ matrix.target-arch }}-linux/lib/stubs"
+            TORCH_CUDA_ARCH_LIST="${{ matrix.torch-cuda-arch-list }}"
+            UV_NO_CONFIG=1
+            MAX_JOBS=8
+          CIBW_REPAIR_WHEEL_COMMAND_LINUX: >-
+            auditwheel repair -w /tmp/cibuildwheel/repaired_wheel {wheel} ${{ matrix.auditwheel-excludes }}
+          CIBW_BUILD_FRONTEND: "build[uv]; args: --no-isolation"
+
+      - name: Embed metadata into wheel
+        env:
+          PYG_LIB_VERSION: ${{ steps.pyg-lib-version.outputs.version }}
+          SOURCE_COMMIT: ${{ steps.source-commit.outputs.sha }}
+          BUILD_COMMIT: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: |
+          for wheel in dist/*.whl; do
+            uv run --no-project --script build_scripts/embed_patches.py "$wheel" "build_scripts/patches/${PYG_LIB_VERSION}" \
+              --source-repo "https://github.com/pyg-team/pyg-lib" \
+              --source-tag "${PYG_LIB_VERSION}" \
+              --source-commit "${SOURCE_COMMIT}" \
+              --build-repo "https://github.com/astral-sh-build/build-pyg-lib" \
+              --build-commit "${BUILD_COMMIT}" \
+              --license-expression "MIT AND BSD-3-Clause AND Apache-2.0 AND (Apache-2.0 WITH LLVM-exception)" \
+              --license-file "LICENSE:LICENSE" \
+              --license-file "LICENSE_radix_sort:LICENSE_radix_sort" \
+              --license-file "third_party/METIS/LICENSE:third-party/METIS/LICENSE" \
+              --license-file "third_party/METIS/GKlib/LICENSE.txt:third-party/METIS/GKlib/LICENSE.txt" \
+              --license-file "third_party/cccl/LICENSE:third-party/cccl/LICENSE" \
+              --license-file "third_party/cccl/cub/LICENSE.TXT:third-party/cccl/cub/LICENSE.TXT" \
+              --license-file "third_party/cccl/libcudacxx/LICENSE.TXT:third-party/cccl/libcudacxx/LICENSE.TXT" \
+              --license-file "third_party/cccl/thrust/LICENSE:third-party/cccl/thrust/LICENSE" \
+              --license-file "third_party/cuCollections/LICENSE:third-party/cuCollections/LICENSE" \
+              --license-file "third_party/cutlass/LICENSE.txt:third-party/cutlass/LICENSE.txt" \
+              --license-file "third_party/parallel-hashmap/LICENSE:third-party/parallel-hashmap/LICENSE"
+          done
+
+      - name: Log built wheel
+        run: |
+          wheel_name=$(ls dist/*.whl | xargs -n 1 basename)
+          echo "wheel_name=${wheel_name}" >> "$GITHUB_ENV"
+          ls dist
+
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: ${{ env.wheel_name }}
+          path: dist/${{ env.wheel_name }}
+          if-no-files-found: error
+
+  create-release:
+    name: Create release
+    if: github.event_name == 'workflow_dispatch'
+    needs: [build-wheels]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          path: dist
+          merge-multiple: true
+
+      - name: Create release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ inputs.release_tag }}
+        run: >-
+          gh release create "${RELEASE_TAG}" ./dist/*.whl
+          --target "${GITHUB_SHA}"
+          --title "${RELEASE_TAG}"
+          --notes ""
+          --repo "${GITHUB_REPOSITORY}"
