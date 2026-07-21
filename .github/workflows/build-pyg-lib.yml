@@ -127,7 +127,6 @@ jobs:
             LIBRARY_PATH=/usr/lib64
             LD_LIBRARY_PATH=/usr/lib64:/usr/local/cuda-${{ matrix.cuda-version }}/lib64:/usr/local/cuda-${{ matrix.cuda-version }}/targets/${{ matrix.target-arch }}-linux/lib:/usr/local/cuda-${{ matrix.cuda-version }}/extras/CUPTI/lib64
             LDFLAGS="-ldl -L/usr/local/cuda-${{ matrix.cuda-version }}/targets/${{ matrix.target-arch }}-linux/lib/stubs"
-            UV_PYTHON=/opt/python/cp310-cp310/bin/python
             UV_NO_CONFIG=1
             MAX_JOBS=8
           CIBW_REPAIR_WHEEL_COMMAND_LINUX: >-
