@@ -57,14 +57,15 @@ suite on an NVIDIA A10G. The CUDA wheel is not installed on the local machine.
 
 Wheels are built from
 [pyg-lib 0.9.0](https://github.com/pyg-team/pyg-lib/releases/tag/0.9.0). The
-wheels use CPython's stable ABI and support Python 3.10 through 3.14.
+wheels use CPython's stable ABI. PyTorch 2.13 and newer support Python 3.10 through 3.15; older PyTorch builds support Python 3.10 through 3.14.
 
 | PyTorch | Python    | `x86_64` CPU | `aarch64` CPU | `x86_64` CUDA    | `aarch64` CUDA   |
 | ------- | --------- | ------------ | ------------- | ---------------- | ---------------- |
 | 2.10.0  | 3.10-3.14 | ✓            | ✓             | 12.6, 12.8, 13.0 | 12.6, 12.8, 13.0 |
 | 2.11.0  | 3.10-3.14 | ✓            | ✓             | 12.6, 12.8, 13.0 | 12.6, 12.8, 13.0 |
 | 2.12.0  | 3.10-3.14 | ✓            | ✓             | 12.6, 13.0, 13.2 | 12.6, 13.0, 13.2 |
-| 2.13.0  | 3.10-3.14 | ✓            | ✓             | 12.6, 13.0, 13.2 | 12.6, 13.0, 13.2 |
+| 2.13.0  | 3.10-3.15 | ✓            | ✓             | 12.6, 13.0, 13.2 | 12.6, 13.0, 13.2 |
+| 2.14.1  | 3.10-3.15 | ✓            | ✓             | 12.6, 13.0, 13.2 | 12.6, 13.0, 13.2 |
 
 ## License
 
