@@ -150,7 +150,7 @@ jobs:
           uv venv --python 3.15 .venv-py315
           uv pip install --python .venv-py315/bin/python \
             --index-strategy unsafe-first-match \
-            --index-url "https://download.pytorch.org/whl/${TORCH_BACKEND}" \
+            --extra-index-url "https://download.pytorch.org/whl/${TORCH_BACKEND}" \
             "torch==${TORCH_VERSION}" dist/*.whl
           .venv-py315/bin/python -c "import pyg_lib; print(pyg_lib.__version__); print(pyg_lib.cuda_version())"
 
