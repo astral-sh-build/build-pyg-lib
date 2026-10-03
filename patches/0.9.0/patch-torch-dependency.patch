@@ -1,8 +1,12 @@
-diff --git a/setup.py b/setup.py
-index 1234567..abcdefg 100644
 --- a/setup.py
 +++ b/setup.py
-@@ -153 +153,2 @@ def mkl_dependencies():
+@@ -160,7 +160,8 @@
+     return dependencies
+ 
+ 
 -install_requires = [] + mkl_dependencies()
 +torch_minor = '.'.join(torch.__version__.split('+')[0].split('.')[:2])
 +install_requires = [f'torch=={torch_minor}.*'] + mkl_dependencies()
+ 
+ if not bool(os.getenv('BUILD_DOCS', 0)):
+     ext_modules = [CMakeExtension('pyg_lib.libpyg')]
