@@ -4,7 +4,7 @@ version = "0.1.0"
 requires-python = ">=3.12,<3.13"
 dependencies = [
     "numpy>=2,<3",
-    "pyg-lib==0.8.0+cu.12.8.torch.2.10",
+    "pyg-lib==0.9.0+cu.12.8.torch.2.10",
     "pytest>=8,<10",
     "torch==2.10.0+cu128",
 ]

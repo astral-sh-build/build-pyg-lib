@@ -4,7 +4,7 @@ permissions: {}
 
 on:
   pull_request:
-    branches: [main]
+    branches: [main, "charlie/gpu-audit-*"]
   workflow_dispatch:
     inputs:
       release_tag:
@@ -58,7 +58,7 @@ jobs:
           if [ "${GITHUB_EVENT_NAME}" = "workflow_dispatch" ]; then
             PYG_LIB_VERSION=$(sed -E 's/-r[0-9]+$//' <<<"${INPUTS_RELEASE_TAG}")
           else
-            PYG_LIB_VERSION="0.8.0"
+            PYG_LIB_VERSION="0.9.0"
           fi
           echo "version=${PYG_LIB_VERSION}" >> "$GITHUB_OUTPUT"
           echo "Using pyg-lib version: ${PYG_LIB_VERSION}"
