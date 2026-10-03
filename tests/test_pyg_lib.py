@@ -14,7 +14,7 @@ def device() -> torch.device:
 
 
 def test_published_cuda_wheel(device: torch.device) -> None:
-    assert version("pyg-lib") == "0.8.0+cu.12.8.torch.2.10"
+    assert version("pyg-lib") == "0.9.0+cu.12.8.torch.2.10"
     assert torch.__version__ == "2.10.0+cu128"
     assert torch.version.cuda == "12.8"
     assert pyg_lib.cuda_version() == 12080

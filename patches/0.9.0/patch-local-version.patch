@@ -1,0 +1,23 @@
+--- a/setup.py
++++ b/setup.py
+@@ -10,10 +10,20 @@
+ import subprocess
+ import warnings
+ 
++import torch
++
+ from setuptools import Extension, find_packages, setup
+ from setuptools.command.build_ext import build_ext
+ 
+ __version__ = '0.9.0'
++
++# Auto-generate a local version from the accelerator and PyTorch versions.
++cuda_version = torch.version.cuda
++torch_version = '.'.join(torch.__version__.split('+')[0].split('.')[:2])
++if cuda_version:
++    __version__ = f'{__version__}+cu.{cuda_version}.torch.{torch_version}'
++else:
++    __version__ = f'{__version__}+cpu.torch.{torch_version}'
+ URL = 'https://github.com/pyg-team/pyg-lib'
+ 
+ 

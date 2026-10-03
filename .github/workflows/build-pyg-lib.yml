@@ -4,7 +4,7 @@ permissions: {}
 
 on:
   pull_request:
-    branches: [main]
+    branches: [main, "charlie/gpu-audit-*"]
   workflow_dispatch:
     inputs:
       release_tag:
@@ -58,7 +58,7 @@ jobs:
           if [ "${GITHUB_EVENT_NAME}" = "workflow_dispatch" ]; then
             PYG_LIB_VERSION=$(sed -E 's/-r[0-9]+$//' <<<"${INPUTS_RELEASE_TAG}")
           else
-            PYG_LIB_VERSION="0.8.0"
+            PYG_LIB_VERSION="0.9.0"
           fi
           echo "version=${PYG_LIB_VERSION}" >> "$GITHUB_OUTPUT"
           echo "Using pyg-lib version: ${PYG_LIB_VERSION}"
@@ -133,6 +133,26 @@ jobs:
           CIBW_REPAIR_WHEEL_COMMAND_LINUX: >-
             auditwheel repair -w /tmp/cibuildwheel/repaired_wheel {wheel} ${{ matrix.auditwheel-excludes }}
           CIBW_BUILD_FRONTEND: "build[uv]; args: --no-isolation"
+
+      - name: Install Python 3.15 for the stable ABI test
+        if: matrix.torch-minor == '2.13' || matrix.torch-minor == '2.14'
+        uses: actions/setup-python@e797f83bcb11b83ae66e0230d6156d7c80228e7c # v6.0.0
+        with:
+          python-version: "3.15"
+          allow-prereleases: true
+
+      - name: Test stable ABI on Python 3.15
+        if: matrix.torch-minor == '2.13' || matrix.torch-minor == '2.14'
+        env:
+          TORCH_VERSION: ${{ matrix.torch-version }}
+          TORCH_BACKEND: ${{ matrix.backend }}
+        run: |
+          uv venv --python 3.15 .venv-py315
+          uv pip install --python .venv-py315/bin/python \
+            --index-strategy unsafe-first-match \
+            --extra-index-url "https://download.pytorch.org/whl/${TORCH_BACKEND}" \
+            "torch==${TORCH_VERSION}" dist/*.whl
+          .venv-py315/bin/python -I -c "import pyg_lib; print(pyg_lib.__version__); print(pyg_lib.cuda_version())"
 
       - name: Embed metadata into wheel
         env:

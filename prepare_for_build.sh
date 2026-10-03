@@ -5,7 +5,7 @@ set -euxo pipefail
 
 if [ "$#" -ne 1 ]; then
     echo "Usage: $0 <pyg-lib-version>"
-    echo "Example: $0 0.8.0"
+    echo "Example: $0 0.9.0"
     exit 1
 fi
 
