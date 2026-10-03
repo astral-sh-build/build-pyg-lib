@@ -87,9 +87,10 @@ def main() -> None:
                     }
                 )
 
-    # Temporarily validate every newly supported compatibility build.
     if os.environ.get("LIMIT_MATRIX") == "1":
-        rows = [row for row in rows if row['torch-version'] in ('2.14.1',)]
+        cpu = next(row for row in reversed(rows) if row["backend"] == "cpu")
+        cuda = next(row for row in reversed(rows) if row["backend"] != "cpu")
+        rows = [cpu, cuda]
 
     print(json.dumps(rows))
 
