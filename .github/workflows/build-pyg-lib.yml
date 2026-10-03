@@ -152,7 +152,7 @@ jobs:
             --index-strategy unsafe-first-match \
             --extra-index-url "https://download.pytorch.org/whl/${TORCH_BACKEND}" \
             "torch==${TORCH_VERSION}" dist/*.whl
-          .venv-py315/bin/python -c "import pyg_lib; print(pyg_lib.__version__); print(pyg_lib.cuda_version())"
+          .venv-py315/bin/python -I -c "import pyg_lib; print(pyg_lib.__version__); print(pyg_lib.cuda_version())"
 
       - name: Embed metadata into wheel
         env:
